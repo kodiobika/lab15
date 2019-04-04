@@ -70,7 +70,7 @@ open NativeLazyStreams ;;
 NativeLazystreams.stream *)
   
 let rec fibs =
-  lazy (Cons(0, lazy (Cons(1, smap2 (+) fibs (tail fibs))))) ;;
+  lazy (Cons (0, lazy (Cons(1, smap2 (+) fibs (tail fibs))))) ;;
 
 (* We run it twice, generating the first 50 Fibonacci numbers: 
 
@@ -109,7 +109,8 @@ second argument. For example:
     - : float list = [1.; 2.; 4.; 8.; 16.; 32.; 64.; 128.; 256.; 512.]
 ....................................................................*)
 
-let geo _ = failwith "geo not implemented" ;;
+let rec geo (initial : float) (mult : float) : float stream = 
+  lazy (Cons (initial, geo (initial *. mult) mult)) ;;
 
 (*====================================================================
 Part 2. Eratosthenes' sieve revisited
@@ -136,11 +137,14 @@ Exercise 3. Redo the Eratosthenes sieve using the NativeLazyStreams
 module by completing the values and functions below. 
 ....................................................................*)
 
-let rec nats = lazy (failwith "nats native not implemented") ;;
+let rec nats = lazy (Cons (0, smap ((+) 1) nats)) ;;
  
-let rec sieve s = failwith "sieve native not implemented" ;;
+let rec sieve s = 
+  let not_div_by (n : int) (m : int) : bool = 
+    not (m mod n = 0) in 
+    lazy (Cons ((head s), sieve (sfilter (not_div_by (head s)) (tail s)))) ;;
 
-let primes = lazy (failwith "primes native not implemented") ;;
+let primes = sieve (tail (tail nats)) ;;
 
 (*....................................................................
 Exercise 4. How much further can you get computing primes now that the
@@ -149,7 +153,8 @@ element in a stream, and use it to find out the 2000th prime.
 ....................................................................*)
 
 let rec nth (s : 'a stream) (n : int) : 'a =
-  failwith "nth native not implemented" ;;
+  if n = 0 then head s
+  else nth (tail s) (n -1);;
 
 
 (*====================================================================
@@ -188,8 +193,10 @@ the input stream. For example:
 - : float list = [0.5; 1.5; 2.5; 3.5; 4.5]
 ....................................................................*)
   
+(* let float_nats = smap (float_of_int) nats ;; *)
+
 let average (s : float stream) : float stream =
-  failwith "average not implemented" ;;
+  smap2 (fun a b -> (a +. b) /. 2.) s (tail s) ;;
 
 (* Now instead of using the stream of approximations in pi_sums, you
 can instead use the stream of averaged pi_sums, which converges much
@@ -216,26 +223,29 @@ http://url.cs51.io/aitken.
 Write a function to apply this accelerator to a stream, and use it to
 generate approximations of pi.
 ....................................................................*)
-   
-let aitken (s: float stream) : float stream =
-  failwith "aitken not implemented" ;;
 
+let aitken (s: float stream) : float stream =
+  let s1 = tail s in
+  let s2 = tail s1 in
+  smap2 (+.) s2 (smap2 (fun a b -> a -. 2. *. b) s s1)
+  |> smap2 (/.) (smap2 (fun a b -> (a -. b) ** 2.) s s1)
+  |> smap2 (-.) s;;
 (*......................................................................
 Exercise 7: Testing the acceleration
 
 Fill out the following table, recording how many steps are needed to
 get within different epsilons of pi.
 
+       ---------------------------------------------------------
+    epsilon  |  pi_sums  |  averaged method  |  aitken method
     ---------------------------------------------------------
-    epsilon  |  pi_sums  |  averaged method  |  aitken method 
+    0.1      |     19      |       2        |     0
     ---------------------------------------------------------
-    0.1      |           |                   |
+    0.01     |     199     |       9        |     2
     ---------------------------------------------------------
-    0.01     |           |                   |
+    0.001    |     1999    |       30       |     6
     ---------------------------------------------------------
-    0.001    |           |                   |
-    ---------------------------------------------------------
-    0.0001   |           |                   |
+    0.0001   |     19999   |       99       |     15
     ---------------------------------------------------------
 ......................................................................*)
 
